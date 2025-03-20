@@ -1,0 +1,95 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  email     String   @unique
+  password  String
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+
+  movies  Movie[] // ความสัมพันธ์: ผู้ใช้สามารถเพิ่มหลายหนังได้
+  Booking Booking[]
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model Movie {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  imageUrl    String // ภาพโปสเตอร์ (ต้องมีเสมอ)
+  releaseDate DateTime?
+  createdAt   DateTime  @default(now()) // เวลาสร้าง
+  updatedAt   DateTime  @updatedAt // เวลาล่าสุดที่มีการอัปเดต
+
+  category   Category? @relation(fields: [categoryId], references: [id])
+  categoryId Int? // อนุญาตให้เป็น NULL ได้ ถ้าหนังไม่มีหมวดหมู่
+
+  addedBy  User       @relation(fields: [userId], references: [id])
+  userId   Int // บังคับว่าต้องมีผู้ใช้ที่เพิ่มหนังนี้
+  Showtime Showtime[]
+}
+
+model Category {
+  id    Int     @id @default(autoincrement())
+  name  String
+  Movie Movie[]
+}
+
+model Showtime {
+  id        Int       @id @default(autoincrement())
+  movie     Movie     @relation(fields: [movieId], references: [id])
+  movieId   Int
+  startTime DateTime // เวลาที่เริ่มฉาย
+  endTime   DateTime // เวลาจบหนัง
+  capacity  Int // จำนวนที่นั่งทั้งหมด
+  price     Float? // หรือ Float ถ้าบังคับ
+  bookings  Booking[] // การจองที่เกี่ยวข้องกับรอบฉายนี้
+  Seat      Seat[]
+}
+
+model Seat {
+  id          Int           @id @default(autoincrement())
+  showtime    Showtime      @relation(fields: [showtimeId], references: [id])
+  showtimeId  Int
+  seatNumber  String // เช่น "A1", "B3"
+  row         String // เช่น "A", "B", "C"
+  BookingSeat BookingSeat[]
+}
+
+model Booking {
+  id         Int      @id @default(autoincrement())
+  user       User     @relation(fields: [userId], references: [id])
+  userId     Int
+  showtime   Showtime @relation(fields: [showtimeId], references: [id])
+  showtimeId Int
+  totalPrice Float // ราคาโดยรวมของการจอง
+
+  seats     BookingSeat[]
+  createdAt DateTime      @default(now()) // เวลาที่ทำการจอง
+}
+
+model BookingSeat {
+  id        Int     @id @default(autoincrement())
+  booking   Booking @relation(fields: [bookingId], references: [id])
+  bookingId Int
+  seat      Seat    @relation(fields: [seatId], references: [id])
+  seatId    Int
+}
